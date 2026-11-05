@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portofino Dashboard</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: var(--tg-theme-secondary-bg-color, #f1f1f4);
+    --card: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #0b0b0b);
+    --muted: var(--tg-theme-hint-color, #6b6a66);
+    --accent: var(--tg-theme-button-color, #2a78d6);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --line: rgba(127,127,127,.18);
+    --s1: #2a78d6;      /* Arizalar */
+    --s2: #eb6834;      /* Bron */
+    --ramp: #86b6ef;    /* воронка, светлый край */
+    --warn-bg: #fff4e5; --warn-ink: #8a4b00;
+    --bad-bg: #fdecec;  --bad-ink: #a12a2a;
+    --good-ink: #0f7a3a;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: var(--tg-theme-secondary-bg-color, #111112);
+    --card: var(--tg-theme-bg-color, #1a1a19);
+    --text: var(--tg-theme-text-color, #f0efec);
+    --muted: var(--tg-theme-hint-color, #a3a29b);
+    --line: rgba(255,255,255,.12);
+    --s1: #3987e5; --s2: #d95926; --ramp: #184f95;
+    --warn-bg: #3a2a10; --warn-ink: #ffc56b;
+    --bad-bg: #3b1717;  --bad-ink: #ff9a9a;
+    --good-ink: #6ee29a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { padding: 12px 12px 32px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 4px 4px 2px; }
+  .sub { color: var(--muted); font-size: 12px; margin: 0 4px 10px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text);
+    padding: 7px 14px; border-radius: 999px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; }
+  .card h2 small { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .kpi { background: var(--card); border-radius: 14px; padding: 12px 10px; min-width: 0; }
+  .kpi .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi .l { color: var(--muted); font-size: 12px; }
+  .kpi.hero .v { color: var(--good-ink); }
+  .kpi.alarm .v { color: var(--bad-ink); }
+  @media (max-width: 380px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 44px; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }
+  .bar-row .lab { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .track { height: 14px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .fill.f0 { background: var(--ramp); }
+  .pct { color: var(--muted); font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 3px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .scroll-x { overflow-x: auto; }
+  .alert { border-radius: 10px; padding: 10px 12px; margin: 6px 0; font-size: 13px; }
+  .alert.warn { background: var(--warn-bg); color: var(--warn-ink); }
+  .alert.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .alert b { color: inherit; }
+  .ok { color: var(--good-ink); font-size: 14px; }
+  .lead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .lead:last-child { border-bottom: 0; }
+  .lead .top { display: flex; justify-content: space-between; gap: 8px; }
+  .lead .name { font-weight: 600; font-size: 14px; }
+  .lead .meta { color: var(--muted); }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; align-self: flex-start; }
+  a { color: var(--accent); text-decoration: none; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: -4px 0 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .chart-box { position: relative; height: 200px; }
+  .center { text-align: center; color: var(--muted); padding: 40px 12px; }
+  .empty { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>📊 Portofino · Arizalar va sotuv</h1>
+  <p class="sub" id="sub">Yuklanmoqda…</p>
+
+  <div class="chips" role="group" aria-label="Davr">
+    <button class="chip" data-p="1">Bugun</button>
+    <button class="chip" data-p="7" aria-pressed="true">7 kun</button>
+    <button class="chip" data-p="30">30 kun</button>
+    <button class="chip" data-p="0">Hammasi</button>
+  </div>
+
+  <div id="app"><div class="center">Yuklanmoqda…</div></div>
+
+<script>
+const API = "https://lbzmqjxnqgnstxxihxwr.supabase.co/functions/v1/lead-router?api=dashboard";
+const tg = window.Telegram?.WebApp;
+const STATUS = { new: "🆕 Yangi", taken: "🙋 Olindi", contacted: "📞 Bog'lanildi", quoted: "💬 Narx yuborildi", booked: "✅ Bron", lost: "❌ Rad etdi" };
+let period = 7, chart = null;
+
+if (tg) {
+  tg.ready(); tg.expand();
+  document.documentElement.dataset.theme = tg.colorScheme === "dark" ? "dark" : "light";
+  tg.onEvent("themeChanged", () => { document.documentElement.dataset.theme = tg.colorScheme === "dark" ? "dark" : "light"; load(); });
+}
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtDT = (iso) => new Date(iso).toLocaleString("ru-RU", { timeZone: "Asia/Tashkent", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const fmtMin = (m) => m == null ? "—" : m < 60 ? `${Math.round(m)} daq` : `${(m / 60).toFixed(1)} soat`;
+const fmtMinShort = (m) => m == null ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}s`;
+const fmtH = (h) => h < 1 ? `${Math.round(h * 60)} daq` : h < 48 ? `${Math.round(h)} soat` : `${Math.round(h / 24)} kun`;
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  period = Number(b.dataset.p);
+  tg?.HapticFeedback?.selectionChanged();
+  load();
+}));
+
+async function load() {
+  const app = document.getElementById("app");
+  if (!tg || !tg.initData) {
+    app.innerHTML = `<div class="center">Bu panel faqat Telegram ichida, bot orqali ochiladi.</div>`;
+    document.getElementById("sub").textContent = "";
+    return;
+  }
+  try {
+    const r = await fetch(API, { method: "POST", headers: { "content-type": "text/plain" }, body: JSON.stringify({ initData: tg.initData, period }) });
+    if (r.status === 401 || r.status === 403) {
+      app.innerHTML = `<div class="center">Ruxsat yo'q. Bu panel faqat rahbar uchun.</div>`;
+      document.getElementById("sub").textContent = "";
+      return;
+    }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    render(await r.json());
+  } catch (e) {
+    app.innerHTML = `<div class="center">Ma'lumot yuklanmadi. Keyinroq qayta urinib ko'ring.<br><small>${esc(e.message)}</small></div>`;
+  }
+}
+
+function bars(items, max, cls = "") {
+  return items.map((it, i) => {
+    const w = max ? Math.max(1, (it.count / max) * 100) : 0;
+    return `<div class="bar-row" title="${esc(it.label)}: ${it.count}">
+      <div class="lab">${esc(it.label)}</div>
+      <div class="track"><div class="fill ${cls && i === 0 ? cls : ""}" style="width:${w}%"></div></div>
+      <div class="num">${it.count}${it.pct != null ? `<div class="pct">${it.pct}%</div>` : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+function render(d) {
+  const k = d.kpi;
+  document.getElementById("sub").textContent = `Yangilandi: ${fmtDT(d.generated_at)} · ${esc(d.me)}`;
+
+  const top = d.funnel[0].count || 0;
+  const funnel = d.funnel.map((f) => ({ label: f.label, count: f.count, pct: top ? Math.round((f.count / top) * 100) : 0 }));
+
+  const alerts = d.alerts.length
+    ? d.alerts.map((a) => `<div class="alert ${a.status === "new" || a.hours >= 24 ? "bad" : "warn"}">
+        ⚠️ <b>#${a.id} ${esc(a.name)}</b> — ${esc(a.reason)} (${fmtH(a.hours)})<br>
+        Menejer: ${esc(a.manager)}${a.phone ? ` · <a href="tel:${esc(a.phone)}">${esc(a.phone)}</a>` : ""}</div>`).join("")
+    : `<div class="ok">✅ Hammasi nazoratda — kechikkan arizalar yo'q</div>`;
+
+  const mgr = d.managers.length ? `<div class="scroll-x"><table>
+      <thead><tr><th>Menejer</th><th>Ariza</th><th>📞</th><th>💬</th><th>✅</th><th>❌</th><th>Konv.</th><th>⚡</th></tr></thead>
+      <tbody>${d.managers.map((m) => `<tr>
+        <td>${esc(m.name)}${m.auto ? `<div class="pct">🔁 avto: ${m.auto}</div>` : ""}</td>
+        <td>${m.total}</td><td>${m.contacted}</td><td>${m.quoted}</td><td><b>${m.booked}</b></td><td>${m.lost}</td>
+        <td>${m.conversion}%</td><td>${fmtMinShort(m.avg_take_min)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="pct">📞 bog'lanildi · 💬 narx yuborildi · ✅ bron · ❌ rad · ⚡ arizani o'rtacha necha daqiqada olgan</p>` : `<p class="empty">Menejerlar yo'q</p>`;
+
+  const demandMax = Math.max(0, ...d.demand.map((x) => x.count));
+  const recent = d.recent.length ? d.recent.map((l) => `<div class="lead">
+      <div class="top"><div><span class="name">#${l.id} ${esc(l.name)}</span>
+        <div class="meta">${fmtDT(l.created_at)} · ${esc(l.manager)}${l.auto ? " 🔁" : ""}</div></div>
+        <span class="badge">${STATUS[l.status] ?? esc(l.status)}</span></div>
+      <div class="meta">${[l.month && "📅 " + esc(l.month), l.dates && "🗓 " + esc(l.dates), l.adults && "👤 " + esc(l.adults), l.kids && "👶 " + esc(l.kids), l.kids_age && "(" + esc(l.kids_age) + ")"].filter(Boolean).join(" · ")}</div>
+      ${l.phone ? `<a href="tel:${esc(l.phone)}">📞 ${esc(l.phone)}</a>` : ""}
+    </div>`).join("") : `<p class="empty">Bu davrda arizalar yo'q</p>`;
+
+  document.getElementById("app").innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${k.total}</div><div class="l">Arizalar</div></div>
+      <div class="kpi hero"><div class="v">${k.booked}</div><div class="l">Bron</div></div>
+      <div class="kpi"><div class="v">${k.conversion}%</div><div class="l">Konversiya</div></div>
+      <div class="kpi"><div class="v">${k.in_work}</div><div class="l">Ishda</div></div>
+      <div class="kpi ${k.unclaimed ? "alarm" : ""}"><div class="v">${k.unclaimed}</div><div class="l">Olinmagan</div></div>
+      <div class="kpi"><div class="v">${fmtMin(k.avg_take_min)}</div><div class="l">O'rtacha olish</div></div>
+    </div>
+
+    <div class="card"><h2>Diqqat talab qiladi <small>${d.alerts.length} ta</small></h2>${alerts}</div>
+
+    <div class="card"><h2>Sotuv voronkasi <small>❌ rad: ${k.lost}</small></h2>${bars(funnel, top)}</div>
+
+    <div class="card"><h2>${d.period === 1 ? "Bugun soatlar bo'yicha" : "Kunlar bo'yicha"}</h2>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Arizalar</span><span><i style="background:var(--s2)"></i>Bron</span></div>
+      <div class="chart-box"><canvas id="tl" aria-label="Arizalar va bronlar dinamikasi"></canvas></div></div>
+
+    <div class="card"><h2>Menejerlar reytingi <small>🔁 avto: ${k.auto_assigned}</small></h2>${mgr}</div>
+
+    <div class="card"><h2>Talab: qaysi oyga</h2>${d.demand.length ? bars(d.demand, demandMax) : `<p class="empty">Hali ma'lumot yo'q</p>`}</div>
+
+    <div class="card"><h2>So'nggi arizalar <small>${d.recent.length} ta</small></h2>${recent}</div>`;
+
+  drawTimeline(d.timeline, d.period);
+}
+
+function drawTimeline(tl, p) {
+  if (!window.Chart) return;
+  chart?.destroy();
+  const ink = css("--muted") || "#6b6a66", grid = css("--line") || "rgba(127,127,127,.18)";
+  const labels = tl.map((t) => p === 1 ? t.label : t.label.slice(8, 10) + "." + t.label.slice(5, 7));
+  chart = new Chart(document.getElementById("tl"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Arizalar", data: tl.map((t) => t.leads), backgroundColor: css("--s1"), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 18, categoryPercentage: 0.8, barPercentage: 0.9 },
+      { label: "Bron", data: tl.map((t) => t.booked), backgroundColor: css("--s2"), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 18, categoryPercentage: 0.8, barPercentage: 0.9 },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: { displayColors: true } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: ink, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: ink, precision: 0, font: { size: 11 } } },
+      },
+    },
+  });
+}
+
+load();
+</script>
+</body>
+</html>
