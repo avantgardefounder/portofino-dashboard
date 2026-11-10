@@ -84,6 +84,10 @@
   .chart-box { position: relative; height: 200px; }
   .center { text-align: center; color: var(--muted); padding: 40px 12px; }
   .empty { color: var(--muted); font-size: 13px; }
+  .sub-h { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 0 4px; }
+  .kpis.mini { margin-bottom: 4px; }
+  .kpis.mini .kpi { background: var(--bg); }
+  .kpis.mini .kpi.alarm .v { color: var(--s2); }
 </style>
 </head>
 <body>
@@ -157,6 +161,26 @@ function bars(items, max, cls = "") {
   }).join("");
 }
 
+function cruiseCard(c) {
+  if (!c) return "";
+  if (!c.total) return `<div class="card"><h2>🚢 Aroya Kruiz</h2><p class="empty">Bu davrda kruiz arizalari yo'q</p></div>`;
+  const block = (title, items) => items && items.length
+    ? `<h3 class="sub-h">${title}</h3>${bars(items.map((x) => ({ ...x, pct: Math.round((x.count / c.total) * 100) })), Math.max(...items.map((x) => x.count)))}`
+    : "";
+  return `<div class="card"><h2>🚢 Aroya Kruiz <small>Turkiya + Misr · 7 kecha</small></h2>
+    <div class="kpis mini">
+      <div class="kpi"><div class="v">${c.total}</div><div class="l">Arizalar</div></div>
+      <div class="kpi hero"><div class="v">${c.booked}</div><div class="l">Bron · ${c.conversion}%</div></div>
+      <div class="kpi ${c.hot ? "alarm" : ""}"><div class="v">🔥 ${c.hot}</div><div class="l">1 oy ichida</div></div>
+    </div>
+    ${block("Qachon boradi", c.when)}
+    ${block("Kayuta", c.cabin)}
+    ${block("Kim bilan", c.with)}
+    ${block("Necha kishi", c.people)}
+    ${block("Aloqa usuli", c.contact)}
+  </div>`;
+}
+
 function render(d) {
   const k = d.kpi;
   document.getElementById("sub").textContent = `Yangilandi: ${fmtDT(d.generated_at)} · ${esc(d.me)}`;
@@ -183,7 +207,9 @@ function render(d) {
       <div class="top"><div><span class="name">#${l.id} ${esc(l.name)}</span>
         <div class="meta">${fmtDT(l.created_at)} · ${esc(l.manager)}${l.auto ? " 🔁" : ""}</div></div>
         <span class="badge">${STATUS[l.status] ?? esc(l.status)}</span></div>
-      <div class="meta">${[l.month && "📅 " + esc(l.month), l.dates && "🗓 " + esc(l.dates), l.adults && "👤 " + esc(l.adults), l.kids && "👶 " + esc(l.kids), l.kids_age && "(" + esc(l.kids_age) + ")"].filter(Boolean).join(" · ")}</div>
+      <div class="meta">${l.cruise
+        ? ["🚢 Kruiz", l.when && "🗓 " + esc(l.when), l.people && "👥 " + esc(l.people), l.with && "🤝 " + esc(l.with), l.cabin && "🛏 " + esc(l.cabin), l.contact && "💬 " + esc(l.contact)].filter(Boolean).join(" · ")
+        : [l.month && "📅 " + esc(l.month), l.dates && "🗓 " + esc(l.dates), l.adults && "👤 " + esc(l.adults), l.kids && "👶 " + esc(l.kids), l.kids_age && "(" + esc(l.kids_age) + ")"].filter(Boolean).join(" · ")}</div>
       ${l.phone ? `<a href="tel:${esc(l.phone)}">📞 ${esc(l.phone)}</a>` : ""}
     </div>`).join("") : `<p class="empty">Bu davrda arizalar yo'q</p>`;
 
@@ -207,7 +233,9 @@ function render(d) {
 
     <div class="card"><h2>Menejerlar reytingi <small>🔁 avto: ${k.auto_assigned}</small></h2>${mgr}</div>
 
-    <div class="card"><h2>Talab: qaysi oyga</h2>${d.demand.length ? bars(d.demand, demandMax) : `<p class="empty">Hali ma'lumot yo'q</p>`}</div>
+    <div class="card"><h2>Talab: qaysi oyga <small>Antaliya</small></h2>${d.demand.length ? bars(d.demand, demandMax) : `<p class="empty">Hali ma'lumot yo'q</p>`}</div>
+
+    ${cruiseCard(d.cruise)}
 
     <div class="card"><h2>So'nggi arizalar <small>${d.recent.length} ta</small></h2>${recent}</div>`;
 
