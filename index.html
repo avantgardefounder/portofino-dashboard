@@ -181,6 +181,19 @@ function cruiseCard(c) {
   </div>`;
 }
 
+// Manba: Target reklama (Meta Lead Ads) va Instagram Direct (Chatla AI bot)
+function sourceCard(k) {
+  if (k.direct == null) return "";
+  const total = k.total || 0;
+  const items = [
+    { label: "🎯 Target reklama", count: k.target ?? Math.max(0, total - k.direct) },
+    { label: "💬 Instagram Direct", count: k.direct },
+  ].map((x) => ({ ...x, pct: total ? Math.round((x.count / total) * 100) : 0 }));
+  return `<div class="card"><h2>Manba <small>arizalar qayerdan keldi</small></h2>
+    ${total ? bars(items, Math.max(...items.map((x) => x.count))) : `<p class="empty">Bu davrda arizalar yo'q</p>`}
+    <p class="pct">💬 Instagram Direct — AI bot menejerga o'tkazgan so'rovlar (#D-…)</p></div>`;
+}
+
 function render(d) {
   const k = d.kpi;
   document.getElementById("sub").textContent = `Yangilandi: ${fmtDT(d.generated_at)} · ${esc(d.me)}`;
@@ -222,6 +235,8 @@ function render(d) {
       <div class="kpi ${k.unclaimed ? "alarm" : ""}"><div class="v">${k.unclaimed}</div><div class="l">Olinmagan</div></div>
       <div class="kpi"><div class="v">${fmtMin(k.avg_take_min)}</div><div class="l">O'rtacha olish</div></div>
     </div>
+
+    ${sourceCard(k)}
 
     <div class="card"><h2>Diqqat talab qiladi <small>${d.alerts.length} ta</small></h2>${alerts}</div>
 
